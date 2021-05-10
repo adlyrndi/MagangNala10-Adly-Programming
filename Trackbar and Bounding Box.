@@ -1,0 +1,68 @@
+#include "opencv2/opencv.hpp"
+#include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/videoio.hpp"
+#include <iostream>
+#include <vector>
+
+using namespace std;
+using namespace cv;
+
+bool compareContourAreas (vector<Point> contour1, vector<Point> contour2 ) {
+    double i = fabs( contourArea(cv::Mat(contour1)) );
+    double j = fabs( contourArea(cv::Mat(contour2)) );
+    return ( i < j );
+}
+
+Scalar greenLow = Scalar(40, 40, 40);
+Scalar greenHigh = Scalar(70, 255, 255);
+int main()
+{    
+    Mat frame, fullImageHSV, fullImageHSV2, frame_threshold, frame_threshold2, mask;
+    VideoCapture cap(-1);
+    namedWindow("Window 1", WINDOW_NORMAL);
+    setWindowProperty("Window 1", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
+
+    int glh=0, gls=0, glv=0, rlh=0, rls=0, rlv=0;
+    createTrackbar("Green_LH", "Window 1", &glh, 180);
+    createTrackbar("Green_LS", "Window 1", &gls, 255);
+    createTrackbar("Green_LV", "Window 1", &glv, 255);
+    createTrackbar("Red_LH", "Window 1", &rlh, 180);
+    createTrackbar("Red_LS", "Window 1", &rls, 255);
+    createTrackbar("Red_LV", "Window 1", &rlv, 255);
+    
+    if(!cap.open(0))
+        return 0;
+    for(;;)
+    {
+            cap >> frame;
+            cvtColor(frame, fullImageHSV, COLOR_BGR2HSV);
+            cvtColor(frame, fullImageHSV2, COLOR_BGR2HSV);
+            if( frame.empty() ) break;
+            inRange(fullImageHSV, Scalar(glh, gls, glv), Scalar(180, 255, 255), frame_threshold);
+            inRange(fullImageHSV2, Scalar(rlh, rls, rlv), Scalar(180, 255, 255), frame_threshold2);
+            //cvtColor(frame, frame, COLOR_BGR2HSV);
+            //inRange(frame, greenLow, greenHigh, mask);
+            
+            vector <vector<Point>> contours;
+            findContours(frame_threshold, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+            //drawContours(frame_threshold, contours, 1, (0,255,0), 3);
+            sort(contours.begin(), contours.end(), compareContourAreas);
+                Rect boundRect = boundingRect(contours[contours.size()-1]);
+                if(boundRect.area()>350 && (boundRect.width < 70|| boundRect.height<70)){
+                    rectangle(frame, boundRect.tl(), boundRect.br(), (0,0,255), 2);
+                }
+            vector <vector<Point>> contours2;
+            findContours(frame_threshold2, contours2, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+            //drawContours(frame_threshold, contours, 1, (0,255,0), 3);
+            sort(contours2.begin(), contours2.end(), compareContourAreas);
+                Rect boundRect2 = boundingRect(contours2[contours2.size()-1]);
+                if(boundRect2.area()>350 && (boundRect2.width < 70|| boundRect2.height<70)){
+                    rectangle(frame, boundRect2.tl(), boundRect2.br(), (255,0,0), 2);
+                }
+            imshow("Window 1", frame);
+            if( waitKey(10) >=0 ) break;
+    }
+    return 0;
+}
