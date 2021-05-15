@@ -1,0 +1,81 @@
+#include "opencv2/opencv.hpp"
+#include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/videoio.hpp"
+#include <iostream>
+#include <vector>
+
+using namespace std;
+using namespace cv;
+
+bool compareContourAreas (vector<Point> contour1, vector<Point> contour2 ) {
+    double i = fabs( contourArea(cv::Mat(contour1)) );
+    double j = fabs( contourArea(cv::Mat(contour2)) );
+    return ( i < j );
+}
+
+int x = 640 / 2;
+int y = 480 / 2;
+int err = 0;
+
+
+int main(){    
+    int ero = 0, dil = 0;
+    Mat frame, fullImageHSV, fullImageHSV2, frame_threshold, frame_threshold2, mask, mask2;
+    VideoCapture cap(-1);
+    namedWindow("Window 1", WINDOW_NORMAL);
+    createTrackbar("Green_H", "Window 1", 0, 180);
+    createTrackbar("Green_S", "Window 1", 0, 255);
+    createTrackbar("Green_V", "Window 1", 0, 255);
+    createTrackbar("ERO", "Window 1", &ero, 10);
+    createTrackbar("DIL", "Window 1", &dil, 10);
+    
+    if(!cap.open(0))
+        return 0;
+    for(;;)
+    {
+        cap >> frame;
+        cvtColor(frame, fullImageHSV, COLOR_BGR2HSV);
+        if( frame.empty() ) break;
+        inRange(fullImageHSV, Scalar(0, 0, 0), Scalar(180, 255, 255), mask);
+        Mat elementKernel1 = getStructuringElement(MORPH_RECT, Size(ero+1, ero+1), Point(ero,ero));
+        Mat elementKernel2 = getStructuringElement(MORPH_RECT, Size(dil+1, dil+1), Point(dil,dil));
+        erode(mask, frame_threshold, elementKernel1, Point(-1, -1), -1);
+        dilate(mask, frame_threshold, elementKernel2, Point(-1, -1), -1);
+
+        vector <vector<Point>> contours;
+        findContours(frame_threshold, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+        if(contours.size()!=0){
+            sort(contours.begin(), contours.end(), compareContourAreas);
+            Rect b = boundingRect(contours[contours.size()-1]);
+            if(b.area()>1000){
+                rectangle(frame, b.tl(), b.br(), (0,0,255), 2);
+                if(b.x < x && b.x + b.width > x){
+                    if(b.y < y && b.y + b.height > y){
+                       err = 0;
+                    }
+                }
+            else{
+                int midx = (2*b.x+b.width)/2;
+                int midy = (2*b.y+b.height)/2;
+                err = sqrt(pow((midx-x),2)+pow((midy-y),2));
+            }
+            char str[200];
+            char str2[200];
+            sprintf(str,"error = %d", err);
+            sprintf(str2,"x,y = (%d, %d)", b.x, b.y);
+            putText(frame, str, Point2f(100,50), FONT_HERSHEY_PLAIN, 2,  Scalar(0,0,255,255));
+            putText(frame, str2, Point2f(100,100), FONT_HERSHEY_PLAIN, 2,  Scalar(0,0,255,255));
+
+            }
+        }
+            imshow("Window 1", frame);
+            imshow("Window 2", frame_threshold);
+            if (waitKey(10) == 27){
+                break;
+            }
+            contours.clear();
+    }
+    return 0;
+}
