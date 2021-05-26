@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(finalProject)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+ add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -203,3 +203,9 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+add_executable(finalProjectMANTAP src/finalProjectMANTAP.cpp)
+## Add folders to be run by python nosetests
+# catkin_add_nosetests(test)
+find_package(OpenCV)
+include_directories(${OpenCV_INCLUDE_DIRS})
+target_link_libraries(finalProjectMANTAP ${OpenCV_LIBRARIES})
